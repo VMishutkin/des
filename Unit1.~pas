@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, Math, StdCtrls;
+  Dialogs, Math, StdCtrls, DES;
 
 type
   TForm1 = class(TForm)
@@ -22,9 +22,12 @@ type
     OutText: TEdit;
     Memo1: TEdit;
     Memo2: TEdit;
+    Label7: TLabel;
+    Label8: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure cmdCodeClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+
   private
     { Private declarations }
   public
@@ -127,244 +130,19 @@ const
 implementation
 
 {$R *.dfm}
- //Перевод числа в его двоичный вид
-function ConToBin(Num:Byte; l:integer):string;
-var
- h:string;
- t:string;
- i:integer;
-begin
- h:=inttohex(Num,l);//Встроенная функция перевода, вместо 00-255 получаем 00-ff
- t:='';
- for i:=1 to Length(h) do
- begin
-  case h[i] of
-   '0': t:=t+'0000';
-   '1': t:=t+'0001';
-   '2': t:=t+'0010';
-   '3': t:=t+'0011';
-   '4': t:=t+'0100';
-   '5': t:=t+'0101';
-   '6': t:=t+'0110';
-   '7': t:=t+'0111';
-   '8': t:=t+'1000';
-   '9': t:=t+'1001';
-   'A': t:=t+'1010';
-   'B': t:=t+'1011';
-   'C': t:=t+'1100';
-   'D': t:=t+'1101';
-   'E': t:=t+'1110';
-   'F': t:=t+'1111';
-  end;
- end;
- ConToBin:=t;
-end;
- //Перевод из двоичной в 10ричный вид
-function ConToInt(str:string):integer;
-var
- i:integer;
- t:integer;
-begin
- t:=0;
- for i:=1 to Length(str) do
-  t:=t+strtoint(Copy(str,i,1))*round(power(2,Length(str)-i));
 
- ConToInt:=t;
-end;
- //начальная перестановка текста по таблице
-function MakePerest1(block:string):string;
-var
- t:string;
- i:integer;
-begin
- t:=StringOfChar('0',64);
- for i:=1 to 64 do t[i]:=block[IP1[i]];
- MakePerest1:=t;
-end;
- //конечная перестановка  по таблице
-function MakePerest2(block:string):string;
-var
- t:string;
- i:integer;
-begin
- t:=StringOfChar('0',64);
- for i:=1 to 64 do t[i]:=block[IP2[i]];
- MakePerest2:=t;
-end;
 
-  //Разделение 64 битовой строки на 32битовые
-function GetHighPart(block:string):string;
-begin
- GetHighPart:=Copy(block,1,32);
-end;
 
-function GetLowPart(block:string):string;
-begin
- GetLowPart:=Copy(block,33,32);
-end;
 
- //функция сложения по модулю 2,
-function MakeXOR(blk1,blk2:string; l:integer):string;
-var
- i:integer;
- t:string;
-begin
- t:=StringOfChar('0',l);
- for i:=1 to l do
-  if ((blk1[i]='0') and (blk2[i]='1')) or ((blk1[i]='1') and (blk2[i]='0')) then t[i]:='1' else t[i]:='0';
- MakeXOR:=t;
-end;
-//сдвиг влева
-function ShiftLeft(blk:string; n:integer):string;
-begin
- ShiftLeft:=Copy(blk,n+1,Length(blk)-n)+StringOfChar('0',n);
-end;
 
- //формируем 16 подключей
-procedure MakeSubKeys(Key:string);
-var
- i:integer;
- Hi:string;
- Lo:string;
- OHi:string;
- OLo:string;
- t:string;
- j:integer;
-begin
- Hi:=StringOfChar('0',28);
- Lo:=StringOfChar('0',28);
- OHi:=StringOfChar('0',28);
- OLo:=StringOfChar('0',28);
 
- for i:=1 to 16 do k[i]:=StringOfChar('0',48);
 
- for i:=1 to 28 do
- begin
-  OHi[i]:=Key[C0[i]];
-  OLo[i]:=Key[D0[i]];
- end;
 
- for i:=1 to 16 do
- begin
-  Hi:=ShiftLeft(OHi,R[i]);    //???
-  Lo:=ShiftLeft(OLo,R[i]);
-  t:=Hi+Lo;
-  for j:=1 to 48 do k[i][j]:=t[PC2[j]];
-  OHi:=Hi;
-  OLo:=Lo;
- end;
-end;
-//E расширение, Xor(E(T),K),S преобразование, P перестановка
-function F(X,SK:string):string;
-var
- T:string;
- i:integer;
- H:string;
- XS:string;
-begin
- T:=StringOfChar('0',48);
- for i:=1 to 48 do T[i]:=X[E[i]];
 
- H:=MakeXOR(T,SK,48);
- T:='';
- for i:=1 to 8 do
-  T:=T+ConToBin(S[i,ConToInt(Copy(H,8*(i-1)+1,8))],1);
 
- XS:=StringOfChar('0',32);
- for i:=1 to 32 do XS[i]:=T[P[i]];
- F:=XS;
-end;
 
-function StrToBin(str:string):string;
-var
- t:string;
- i:integer;
-begin
-  //Функция Перводит строку в 0 и 1
- t:='';
- for i:=1 to Length(str) do
- begin
- //ConToBin передаем число по аски, получаем эквивалентное выражение из 0 и 1
-  t:=t+ConToBin(ord(str[i]),2); //ord-возвращает целочисленное значение для символа
- end;
- StrToBin:=t;
-end;
 
-function BinToStr(bin:string):string;
-var
- i:integer;
- t:string;
-begin
- t:=StringOfChar('0',Length(bin) div 8);
- for i:=1 to Length(bin) div 8 do
- begin
-  t[i]:=chr(ConToInt(Copy(bin,8*(i-1)+1,8)));
- end;
- BinToStr:=t;
-end;
 
-function CodeDES(Str,Key:string):string;
-var
- i:integer;
- T:string;
- TZ:string;
- H,L:string;
- OH,OL:string;
- BinKey:string;
-begin
-//переводим ключ и текст в строки из 0 и 1
- T:=StrToBin(Str);
- BinKey:=StrToBin(Key);
- TZ:=StringOfChar('0',64); //TZ- строка после изначальной перестановки
-
- for i:=1 to 64 do TZ[i]:=T[IP1[i]];
-
- H:=GetHighPart(TZ);
- L:=GetLowPart(TZ);
- MakeSubKeys(BinKey);
-
- for i:=1 to 16 do
- begin
-  OH:=H;
-  OL:=L;
-  L:=MakeXOR(OH,F(OL,k[i]),32);
-  H:=OL;
- end;
-
- T:=MakePerest2(L+H);
- CodeDES:=BinToStr(T);
-end;
-
-function DEcodeDES(Str,Key:string):string;
-var
- i:integer;
- T:string;
- TZ:string;
- H,L:string;
- OH,OL:string;
- BinKey:string;
-begin
- T:=StrToBin(Str);
- BinKey:=StrToBin(Key);
- TZ:=StringOfChar('0',64);
-
- for i:=1 to 64 do TZ[i]:=T[IP1[i]];
-
- H:=GetHighPart(TZ);
- L:=GetLowPart(TZ);
- MakeSubKeys(BinKey);
-
- for i:=1 to 16 do
- begin
-  OH:=H;
-  OL:=L;
-  L:=MakeXOR(OH,F(OL,k[17-i]),32);
-  H:=OL;
- end;
-
- T:=MakePerest2(L+H);
- DecodeDES:=BinToStr(T);
-end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
@@ -375,11 +153,11 @@ procedure TForm1.cmdCodeClick(Sender: TObject);
 var
  i:integer;
 begin
-IF ((Length(SourceMemo.Text)mod 8 <> 0) OR (Length(KeyEdit.Text)<>8)) Then
+Label8.Caption:=IntToStr(Length(InText.text) );
+if Length(txtKey.Text)<>8 then
   Begin
   MessageBox(Handle,
-  'Количество букв в сообщении должно быть кратоно 8 (перевод строки считается за 2 буквы)'+
-  #10#13'Ключ должен состоять из 8 символов',
+  'Ключ должен состоять из 8 символов',
   Nil,MB_ICONSTOP);
   Exit;
   End;
@@ -394,6 +172,7 @@ IF ((Length(SourceMemo.Text)mod 8 <> 0) OR (Length(KeyEdit.Text)<>8)) Then
  for i:=1 to Length(InText.Text) div 8 do
  begin
   //ShowMessage(Copy(InText.Text,8*(i-1)+1,8)+' '+inttostr(Length(Copy(InText.Text,8*(i-1)+1,8))));
+  Label8.Caption:=IntToStr(Length(InText.text) )+ ' символа(ов)';
   OutText.Text:=OutText.Text+CodeDES(Copy(InText.Text,8*(i-1)+1,8),txtKey.Text);
  end;
 end;
@@ -402,6 +181,13 @@ procedure TForm1.Button1Click(Sender: TObject);
 var
  i:integer;
 begin
+if Length(Edit1.Text)<>8 then
+  Begin
+  MessageBox(Handle,
+  'Ключ должен состоять из 8 символов',
+  Nil,MB_ICONSTOP);
+  Exit;
+  End;
  Memo2.Text:='';
  for i:=1 to Length(Memo1.Text) div 8 do
  begin

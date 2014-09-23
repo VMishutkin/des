@@ -95,14 +95,14 @@ object Form1: TForm1
   object Label7: TLabel
     Left = 203
     Top = 64
-    Width = 69
-    Height = 25
+    Width = 3
+    Height = 13
   end
   object Label8: TLabel
     Left = 168
     Top = 8
-    Width = 121
-    Height = 17
+    Width = 3
+    Height = 13
   end
   object txtKey: TEdit
     Left = 64
